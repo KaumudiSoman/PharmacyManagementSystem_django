@@ -24,10 +24,11 @@ class Orders(models.Model):
 
 class MedicineLines(models.Model):
     line_no = models.IntegerField(unique=True)
-    price = models.IntegerField()
+    price = models.FloatField()
     line_total = models.IntegerField()
     quantity = models.IntegerField()
-    order_id = models.ForeignKey('orders.Orders', on_delete=models.CASCADE)
+    order_id = models.ForeignKey('orders.Orders', on_delete=models.CASCADE, null=True, blank=True)
+    medicine_id = models.ForeignKey('inventory.Medicine', on_delete=models.CASCADE, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self.line_total = self.price * self.quantity
