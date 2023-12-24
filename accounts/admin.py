@@ -14,7 +14,10 @@ class CustomerAdmin(admin.ModelAdmin):
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ['user_id', 'name', 'email', 'phno', 'branch_id']
 
-admin.site.register(CustomUser)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ['email', 'role', 'is_staff', 'is_admin', 'is_superuser', 'is_verified'] 
+
+admin.site.register(CustomUser, UserAdmin)
 # admin.site.register(Branch)
 # admin.site.register(Orders)
 # admin.site.register(Users, VendorAdmin)

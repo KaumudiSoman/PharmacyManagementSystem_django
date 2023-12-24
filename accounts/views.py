@@ -6,41 +6,56 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view
+from django.conf import settings
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404, redirect
+from .models import CustomUser
+from django.http import JsonResponse
+
 
 # Create your views here.
 
-@api_view(['GET', 'POST'])
+@api_view()
 def home(request):
     return Response({'Message' : 'Welcome to Pharmacy Management System'})
 
 
 class LoginUser(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
     def post(self, request):
-        authentication_classes = []
-        permission_classes = [AllowAny]
-
         email = request.data.get('email')
         password = request.data.get('password')
+        print(email, password)
 
         User = get_user_model()
+        print(User)
 
         authorized_roles = ['employee-cashier', 'employee-salesman', 'employee-manager', 'employee-administrator']
 
         try:
             user = User.objects.get(email=email, role__in=authorized_roles)
+            print(user)
         except User.DoesNotExist:
             return Response({'message': 'User not found/Unauthorized User'}, status=status.HTTP_404_NOT_FOUND)
 
+        print(user.check_password(password))
         if user.check_password(password):
             try:
                 token = Token.objects.get(user=user)
+                print(token)
             except Token.DoesNotExist:
                 return Response({'message' : 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
+            # email_send(email, token)
+            # if not user.is_verified:
+            #     return Response({'message' : 'Email Verification Failed'})
+
             return Response({
                 'token': token.key,
-                'user_email': email,
-                'user-role': user.role,
+                'email': email,
+                'role': user.role,
+                'verified' : user.is_verified,
                 'message': 'User logged in successfully'
             })
         else:
@@ -54,6 +69,35 @@ class SignupUser(APIView):
     def post(self, request):
         serializer = UserSignUpSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            token = Token.objects.get(user=user)
+            email_send(user.email, token)
             return Response({'message' : 'User Registered Successfully'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+def email_send(email, token):
+    subject = 'Your account needs to be verified'
+    message = f'Paste the link to verify your account http://127.0.0.1:8000/verification/{token}'
+    email_from = settings.EMAIL_HOST_USER
+    recipient_list = [email]
+    send_mail(subject, message, email_from, recipient_list)
+
+
+@api_view(['GET'])
+def email_verification(request, token):
+    user_token = get_object_or_404(Token, key=token)
+    user = user_token.user
+    print(user)
+    
+    user1 = CustomUser.objects.get(email=user)
+    print(user1)
+    print(user1.is_verified)
+    if not user1.is_verified:
+        user1.is_verified = True
+        user1.save()
+        print(user1)
+        #return redirect('user_login')
+        return JsonResponse({'message' : 'verified'})
+    return JsonResponse({'message' : 'User already verified'})
