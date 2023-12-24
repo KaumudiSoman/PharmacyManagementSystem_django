@@ -52,10 +52,10 @@ class SignupUser(APIView):
     def post(self, request):
         serializer = UserSignUpSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            user = serializer.save(commit=False)
             token = Token.objects.get(user=user)
             email_send(user.email, token)
-            # serializer.save()
+            user.save()
             return Response({'message' : 'User Registered Successfully'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -74,13 +74,13 @@ def email_verification(request, token):
     user = user_token.user
     print(user)
     
-    user1 = CustomUser.objects.get(email=user)
-    print(user1)
-    print(user1.is_verified)
-    if not user1.is_verified:
-        user1.is_verified = True
-        user1.save()
-        print(user1)
+    user_obj = CustomUser.objects.get(email=user)
+    print(user_obj)
+    print(user_obj.is_verified)
+    if not user_obj.is_verified:
+        user_obj.is_verified = True
+        user_obj.save()
+        print(user_obj)
         #return redirect('user_login')
         return JsonResponse({'message' : 'verified'})
     return JsonResponse({'message' : 'User already verified'})
