@@ -11,7 +11,7 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect
 from .models import CustomUser
 from django.http import JsonResponse
-
+from django.contrib.auth import authenticate
 
 # Create your views here.
 
@@ -26,30 +26,13 @@ class LoginUser(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        print(email, password)
-
-        User = get_user_model()
-        print(User)
 
         authorized_roles = ['employee-cashier', 'employee-salesman', 'employee-manager', 'employee-administrator']
 
-        try:
-            user = User.objects.get(email=email, role__in=authorized_roles)
-            print(user)
-        except User.DoesNotExist:
-            return Response({'message': 'User not found/Unauthorized User'}, status=status.HTTP_404_NOT_FOUND)
+        user = authenticate(request, email=email, password=password, role__in = authorized_roles)
 
-        print(user.check_password(password))
-        if user.check_password(password):
-            try:
-                token = Token.objects.get(user=user)
-                print(token)
-            except Token.DoesNotExist:
-                return Response({'message' : 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-            # email_send(email, token)
-            # if not user.is_verified:
-            #     return Response({'message' : 'Email Verification Failed'})
+        if user is not None:
+            token = Token.objects.get(user=user)
 
             return Response({
                 'token': token.key,
@@ -72,6 +55,7 @@ class SignupUser(APIView):
             user = serializer.save()
             token = Token.objects.get(user=user)
             email_send(user.email, token)
+            # serializer.save()
             return Response({'message' : 'User Registered Successfully'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -85,7 +69,6 @@ def email_send(email, token):
     send_mail(subject, message, email_from, recipient_list)
 
 
-@api_view(['GET'])
 def email_verification(request, token):
     user_token = get_object_or_404(Token, key=token)
     user = user_token.user
