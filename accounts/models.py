@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from branch.models import Branch, CustomUserBranchRelation
+import uuid
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password, **other_fields):
@@ -48,6 +49,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         (VENDOR, 'Vendor'),
         (CUSTOMER, 'Customer'),
     ]
+
+    user_id = models.UUIDField(default=uuid.uuid4, auto_created=True, primary_key=True)
     name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
     dob = models.DateField(null=True)

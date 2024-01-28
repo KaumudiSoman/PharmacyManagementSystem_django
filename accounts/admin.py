@@ -15,7 +15,7 @@ class EmployeeAdmin(admin.ModelAdmin):
     list_display = ['user_id', 'name', 'email', 'phno', 'branch_id']
 
 class UserAdmin(admin.ModelAdmin):
-    list_display = ['email', 'role', 'is_staff', 'is_admin', 'is_superuser', 'is_verified'] 
+    list_display = ['user_id', 'email', 'role', 'is_staff', 'is_admin', 'is_superuser', 'is_verified'] 
 
 admin.site.register(CustomUser, UserAdmin)
 # admin.site.register(Branch)
