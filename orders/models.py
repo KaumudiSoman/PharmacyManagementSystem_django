@@ -2,16 +2,17 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db.models import Sum, Max
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from accounts.models import CustomUser
 from branch.models import Branch 
 import uuid
 from django.utils import timezone
-from inventory.models import Medicine
 # Create your models here.
 
 
+# Sales order is from CustomUser(Customer) to Branch
+# Purchase order is from Branch to CustomUser(Vendor)
 class Orders(models.Model):
     PURCHASE = 'purchase'
     SALES = 'sales'
@@ -30,6 +31,7 @@ class Orders(models.Model):
     order_to_id = models.CharField(null=True, blank=True, max_length = 100)
     order_to = GenericForeignKey('order_to_type', 'order_to_id')
 
+    # Calcualetes total price according to medicine lines
     def update_total(self):
         try:
             total = MedicineLines.objects.filter(order_id=self).aggregate(Sum('line_total'))['line_total__sum']
@@ -38,9 +40,11 @@ class Orders(models.Model):
         except Exception as e:
             print(f'Can not save order total : {e}')
 
+    # Sets order date to current date
     def set_order_date(self):
         self.order_date = timezone.now().date()
 
+    # Specifies order_to and order_from fields according to order type
     def save(self, *args, **kwargs):
         if self.type == self.SALES:
             try:
@@ -64,7 +68,7 @@ class Orders(models.Model):
 
 
 class MedicineLines(models.Model):
-    line_no = models.IntegerField(unique=True)
+    line_no = models.IntegerField()
     price = models.FloatField()
     line_total = models.FloatField()
     quantity = models.IntegerField()
@@ -75,6 +79,7 @@ class MedicineLines(models.Model):
         unique_together = ('order', 'medicine_id')
 
     def save(self, *args, **kwargs):
+        # Gives unique line number to each medicine line for each order
         if not self.pk:
             max_line_no = MedicineLines.objects.filter(order=self.order).aggregate(Max('line_no'))['line_no__max']
             if max_line_no:
@@ -82,10 +87,11 @@ class MedicineLines(models.Model):
             else:
                 self.line_no = 1
 
+        # Sets price as the price of medicine in Medicine model
         if self.medicine_id:
-            medicine_price = Medicine.objects.get(medicine_id=self.medicine_id)
-            self.price = medicine_price
+            self.price = self.medicine_id.price
 
+        # Calculates line total for each medicine line
         self.line_total = self.price * self.quantity
         super().save(*args, **kwargs)
 
@@ -93,26 +99,8 @@ class MedicineLines(models.Model):
         return self.line_no
 
 
+# Updates total price of order post save medicine lines
 @receiver(post_save, sender=MedicineLines)
 def update_order_total(sender, instance, **kwargs):
     if instance.order:
         instance.order.update_total()
-
-
-
-
-
-
-    # order_to_customer = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='customer_orders', null=True, blank=True)
-    # order_to_branch = models.ForeignKey('branch.Branch', on_delete=models.CASCADE, related_name='branch_orders', null=True, blank=True)
-
-    # order_to = models.ForeignKey('branch.branch' if order_from == CUSTOMER else 'accounts.CustomUser')
-    # customer = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='customer_orders', null=True, blank=True)
-    # vendor = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='vendor_orders', null=True, blank=True)
-    # employee = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='employee_orders', null=True, blank=True)
-    # branch = models.ForeignKey('branch.Branch', on_delete=models.CASCADE)
-        
-    
-    # CUSTOMER = 'customer'
-    # BRANCH = 'branch'
-    # ORDER_FROM_CHOICES = [(CUSTOMER, 'customer'), (BRANCH, 'branch')]

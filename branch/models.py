@@ -1,9 +1,7 @@
 from django.db import models
-# from accounts.models import CustomUser
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
 import uuid
 
 # Create your models here.
@@ -18,13 +16,10 @@ class Branch(models.Model):
         return self.name
     
 
+# Represents m:n relationship between CustomUser and Branch
 class CustomUserBranchRelation(models.Model):
     user = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, null=False, blank=False)
     branch = models.ForeignKey('Branch', on_delete=models.CASCADE, null=False, blank=False)
-    # is_employee = models.BooleanField(default=False)
-
-    # employee_roles = ['employee-cashier', 'employee-salesman', 'employee-manager', 'employee-administrator']
-    # is_employee__in = employee_roles
 
     class Meta:
         unique_together = ('user', 'branch')
@@ -35,10 +30,7 @@ class CustomUserBranchRelation(models.Model):
 
 @receiver(pre_save, sender=CustomUserBranchRelation)
 def enforce_employee_constraine(sender, instance, **kwargs):
-    # is_employee = instance.is_employee
     user_role = instance.user.role
-    # def user_role(self):
-    #     return self.user.role
     
     existing_employee = CustomUserBranchRelation.objects.filter(user=instance.user).exists()
 

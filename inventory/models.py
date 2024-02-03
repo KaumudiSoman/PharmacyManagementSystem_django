@@ -1,5 +1,9 @@
 from django.db import models
 import uuid
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.conf import settings
+from django.core.mail import send_mail
 
 # Create your models here.
 class Inventory(models.Model):
@@ -15,6 +19,18 @@ class Inventory(models.Model):
 
     def __str__(self):
         return str(self.inventory_id)
+    
+# Sends email to the manager if quantity of any medicine goes below 50
+@receiver(post_save, sender=Inventory)
+def check_inventory(sender, instance, created, **kwargs):
+    if instance.quantity <= 50:
+        subject = 'Low Inventory Alert'
+        message = f'Quantity for medicine {instance.medicine_id} is {instance.quantity}. Please place order.'
+        manager_email = 'kaumudisoman123@gmail.com'
+        email_from = settings.EMAIL_HOST_USER
+        send_mail(subject, message, email_from, [manager_email])
+        print('Email sent sucessfully')
+
 
 
 class Medicine(models.Model):
